@@ -141,3 +141,30 @@ Other options:
   debugging and analyzing failing container logs.
 - ``make develop-pythontests``: Similar to ``develop-runtests``, but it
   requires containers to be already running.
+
+Multi-Architecture Support
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Docker-OpenWISP supports multi-architecture builds for both ``linux/amd64`` 
+and ``linux/arm64`` platforms. The following targets are available for 
+multi-architecture builds:
+
+- ``make base-build-multiarch [USER=docker-username] [TAG=image-tag]``: 
+  Build and push multi-architecture OpenWISP base image.
+- ``make nfs-build-multiarch [USER=docker-username] [TAG=image-tag]``: 
+  Build and push multi-architecture OpenWISP NFS server image.
+- ``make compose-build-multiarch [USER=docker-username] [TAG=image-tag]``: 
+  Build and push all multi-architecture OpenWISP service images.
+
+Configuration options:
+
+- ``PLATFORMS``: Comma-separated list of target platforms 
+  (default: ``linux/amd64,linux/arm64``)
+- ``LOCAL_PLATFORM``: Platform for local development builds 
+  (default: ``linux/amd64``)
+
+.. note::
+   Multi-architecture builds require Docker Buildx and QEMU emulation
+   support. The images are automatically pushed to the specified registry
+   and cannot be loaded locally due to Docker Buildx limitations with
+   multi-platform builds.

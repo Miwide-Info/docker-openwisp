@@ -20,6 +20,9 @@ This repository contains official docker images of OpenWISP. Designed with
 horizontal scaling, easily replicable deployments and user customization
 in mind.
 
+**Multi-Architecture Support**: Docker images are built for both ``linux/amd64`` 
+and ``linux/arm64`` platforms, enabling deployment on x86-64 and ARM64 hardware.
+
 .. image:: https://raw.githubusercontent.com/openwisp/docker-openwisp/master/docs/images/portainer-docker-list.png
     :target: https://raw.githubusercontent.com/openwisp/docker-openwisp/master/docs/images/portainer-docker-list.png
 
