@@ -19,6 +19,16 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+
       - name: Setup testing environment
         id: deps
         run: |
@@ -99,7 +109,7 @@ jobs:
       - name: Publish to Docker Hub
         if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/master' }}
         run: |
-          make publish USER=docker.io/openwisp TAG=edge SKIP_BUILD=true SKIP_TESTS=true
+          make publish-multiarch USER=docker.io/openwisp TAG=edge SKIP_BUILD=true SKIP_TESTS=true
         env:
           SELENIUM_HEADLESS: 1
 
@@ -115,4 +125,4 @@ jobs:
       - name: Publish to GitLab Container Registry
         if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/master' }}
         run: |
-          make publish TAG=edge SKIP_BUILD=true SKIP_TESTS=true
+          make publish-multiarch TAG=edge SKIP_BUILD=true SKIP_TESTS=true

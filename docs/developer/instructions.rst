@@ -28,6 +28,40 @@ Building and Running Images
       by ``docker-openwisp``, please refer to the :ref:`makefile options
       <docker_make_options>`.
 
+Multi-Architecture Support
+---------------------------
+
+Docker-OpenWISP supports building images for multiple architectures 
+including ``linux/amd64`` and ``linux/arm64`` platforms. This allows the 
+images to run on both x86_64 and ARM64 processors (including Apple Silicon Macs).
+
+**Building Multi-Architecture Images:**
+
+To build images for multiple architectures, use the ``MULTI_ARCH=true`` 
+parameter with build commands:
+
+.. code-block:: bash
+
+    # Build base image for multiple architectures
+    make base-build MULTI_ARCH=true
+
+    # Build NFS image for multiple architectures  
+    make nfs-build MULTI_ARCH=true
+
+    # Build and publish all images for multiple architectures
+    make publish-multiarch
+
+**Platform Support:**
+
+- **linux/amd64**: Traditional x86_64 systems
+- **linux/arm64**: ARM64 systems including Apple Silicon Macs, AWS Graviton, etc.
+
+**Requirements:**
+
+Multi-architecture builds require Docker Buildx and QEMU emulation support. 
+The Makefile automatically sets up the required buildx builder and installs 
+QEMU emulators when ``MULTI_ARCH=true`` is specified.
+
 Running Tests
 -------------
 
@@ -125,6 +159,20 @@ Most commonly used:
   services are working. It stops containers after the test suite passes.
 - ``make clean``: Aggressively purge all containers, images, volumes, and
   networks related to ``docker-openwisp``.
+
+Multi-architecture builds:
+
+- ``make publish-multiarch [USER=docker-username] [TAG=image-tag]``: Build 
+  and publish multi-architecture images for linux/amd64 and linux/arm64 
+  platforms.
+- ``make release-multiarch``: Build and release multi-architecture images 
+  for both latest and versioned tags.
+- ``make multiarch-build``: Build all images for multiple architectures 
+  and push directly to registry.
+- ``make base-build MULTI_ARCH=true``: Build the base image for multiple 
+  architectures.
+- ``make nfs-build MULTI_ARCH=true``: Build the NFS image for multiple 
+  architectures.
 
 Other options:
 
