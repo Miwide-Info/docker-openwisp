@@ -31,6 +31,12 @@ jobs:
           sudo apt remove python3-urllib3 python3-typing-extensions
           sudo pip3 install -r requirements-test.txt
 
+      - name: Set up QEMU for multi-arch builds
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: QA checks
         run: ./run-qa-checks
 
@@ -99,7 +105,7 @@ jobs:
       - name: Publish to Docker Hub
         if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/master' }}
         run: |
-          make publish USER=docker.io/openwisp TAG=edge SKIP_BUILD=true SKIP_TESTS=true
+          make compose-build-multiarch USER=docker.io/openwisp TAG=edge
         env:
           SELENIUM_HEADLESS: 1
 
@@ -115,4 +121,4 @@ jobs:
       - name: Publish to GitLab Container Registry
         if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/master' }}
         run: |
-          make publish TAG=edge SKIP_BUILD=true SKIP_TESTS=true
+          make compose-build-multiarch TAG=edge

@@ -5,6 +5,11 @@ OPENWISP_VERSION = 24.11.1
 SHELL := /bin/bash
 .SILENT: clean pull start stop
 
+# Multi-architecture support
+PLATFORMS ?= linux/amd64,linux/arm64
+LOCAL_PLATFORM ?= linux/amd64
+BUILDX_BUILDER ?= openwisp-builder
+
 default: compose-build
 
 USER = registry.gitlab.com/openwisp/docker-openwisp
@@ -24,31 +29,58 @@ pull:
 	done
 
 # Build
+setup-buildx:
+	@docker buildx use default
+
 python-build: build.py
 	python build.py change-secret-key
 
-base-build:
+# Local development builds (single architecture, loadable for testing)
+base-build: setup-buildx
 	BUILD_ARGS_FILE=$$(cat .build.env 2>/dev/null); \
 	for build_arg in $$BUILD_ARGS_FILE; do \
 	    BUILD_ARGS+=" --build-arg $$build_arg"; \
 	done; \
-	docker build --tag openwisp/openwisp-base:intermedia-system \
+	docker buildx build --platform $(LOCAL_PLATFORM) --tag openwisp/openwisp-base:intermedia-system \
 	             --file ./images/openwisp_base/Dockerfile \
-	             --target SYSTEM ./images/; \
-	docker build --tag openwisp/openwisp-base:intermedia-python \
+	             --target SYSTEM ./images/ --load; \
+	docker buildx build --platform $(LOCAL_PLATFORM) --tag openwisp/openwisp-base:intermedia-python \
 	             --file ./images/openwisp_base/Dockerfile \
 	             --target PYTHON ./images/ \
-	             $$BUILD_ARGS; \
-	docker build --tag openwisp/openwisp-base:latest \
+	             $$BUILD_ARGS --load; \
+	docker buildx build --platform $(LOCAL_PLATFORM) --tag openwisp/openwisp-base:latest \
 	             --file ./images/openwisp_base/Dockerfile ./images/ \
-	             $$BUILD_ARGS
+	             $$BUILD_ARGS --load
 
-nfs-build:
-	docker build --tag openwisp/openwisp-nfs:latest \
-	             --file ./images/openwisp_nfs/Dockerfile ./images/
+# Multi-architecture builds (for publishing to registries)
+base-build-multiarch: setup-buildx
+	BUILD_ARGS_FILE=$$(cat .build.env 2>/dev/null); \
+	for build_arg in $$BUILD_ARGS_FILE; do \
+	    BUILD_ARGS+=" --build-arg $$build_arg"; \
+	done; \
+	printf '\e[1;34m%-6s\e[m\n' "Building multi-arch openwisp-base..."; \
+	docker buildx build --platform $(PLATFORMS) --tag $(USER)/openwisp-base:$(TAG) \
+	             --file ./images/openwisp_base/Dockerfile ./images/ \
+	             $$BUILD_ARGS --push
+
+nfs-build: setup-buildx
+	docker buildx build --platform $(LOCAL_PLATFORM) --tag openwisp/openwisp-nfs:latest \
+	             --file ./images/openwisp_nfs/Dockerfile ./images/ --load
+
+nfs-build-multiarch: setup-buildx
+	printf '\e[1;34m%-6s\e[m\n' "Building multi-arch openwisp-nfs..."; \
+	docker buildx build --platform $(PLATFORMS) --tag $(USER)/openwisp-nfs:$(TAG) \
+	             --file ./images/openwisp_nfs/Dockerfile ./images/ --push
 
 compose-build: base-build
 	docker compose build --parallel
+
+compose-build-multiarch: base-build-multiarch nfs-build-multiarch setup-buildx
+	for service in dashboard api websocket nginx freeradius postfix openvpn; do \
+		printf '\e[1;34m%-6s\e[m\n' "Building multi-arch openwisp-$${service}..."; \
+		docker buildx build --platform $(PLATFORMS) --tag $(USER)/openwisp-$${service}:$(TAG) \
+		             --file ./images/openwisp_$${service}/Dockerfile ./images/ --push; \
+	done
 
 # Test
 runtests: develop-runtests
@@ -97,23 +129,11 @@ stop:
 # Publish
 publish:
 	if [[ "$(SKIP_BUILD)" == "false" ]]; then \
-		make compose-build nfs-build; \
+		make compose-build-multiarch; \
 	fi
 	if [[ "$(SKIP_TESTS)" == "false" ]]; then \
 		make runtests; \
 	fi
-	for image in 'openwisp-base' 'openwisp-nfs' 'openwisp-api' 'openwisp-dashboard' \
-				 'openwisp-freeradius' 'openwisp-nginx' 'openwisp-openvpn' 'openwisp-postfix' \
-				 'openwisp-websocket' ; do \
-		# Docker images built locally are tagged "latest" by default. \
-		# This script updates the tag of each built image to a user-defined tag \
-		# and pushes the newly tagged image to a Docker registry under the user's namespace. \
-		docker tag openwisp/$${image}:latest $(USER)/$${image}:$(TAG); \
-		docker push $(USER)/$${image}:$(TAG); \
-		if [ "$(TAG)" != "latest" ]; then \
-			docker rmi $(USER)/$${image}:$(TAG); \
-		fi; \
-	done
 
 release:
 	make publish TAG=latest SKIP_TESTS=true
